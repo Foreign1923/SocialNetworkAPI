@@ -9,72 +9,75 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-public class AuthService : IAuthService
+namespace SocialNetworkAPI.Services
 {
-    private readonly AppDbContext _context;
-    private readonly IConfiguration _config;
-
-    public AuthService(AppDbContext context, IConfiguration config)
+    public class AuthService : IAuthService
     {
-        _context = context;
-        _config = config;
-    }
+        private readonly AppDbContext _context;
+        private readonly IConfiguration _config;
 
-    public async Task<bool> UserExists(string email)
-    {
-        return await _context.Users.AnyAsync(u => u.Email == email);
-    }
-
-    public async Task<int> Register(UserRegisterDto dto)
-    {
-        using var hmac = new HMACSHA512();
-
-        var user = new User
+        public AuthService(AppDbContext context, IConfiguration config)
         {
-            Email = dto.Email,
-            UserName = dto.UserName,
-            PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dto.Password)),
-            PasswordSalt = hmac.Key
-        };
-
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-        return user.Id;
-    }
-
-    public async Task<string?> Login(UserLoginDto dto)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
-        if (user == null) return null;
-
-        using var hmac = new HMACSHA512(user.PasswordSalt);
-        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dto.Password));
-
-        for (int i = 0; i < computedHash.Length; i++)
-        {
-            if (computedHash[i] != user.PasswordHash[i]) return null;
+            _context = context;
+            _config = config;
         }
 
-        return GenerateToken(user);
-    }
-
-    private string GenerateToken(User user)
-    {
-        var claims = new[]
+        public async Task<bool> UserExists(string email)
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.UserName),
-        };
+            return await _context.Users.AnyAsync(u => u.Email == email);
+        }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+        public async Task<int> Register(UserRegisterDto dto)
+        {
+            using var hmac = new HMACSHA512();
 
-        var token = new JwtSecurityToken(
-            claims: claims,
-            expires: DateTime.Now.AddDays(7),
-            signingCredentials: creds
-        );
+            var user = new User
+            {
+                Email = dto.Email,
+                UserName = dto.UserName,
+                PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dto.Password)),
+                PasswordSalt = hmac.Key
+            };
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return user.Id;
+        }
+
+        public async Task<string?> Login(UserLoginDto dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
+            if (user == null) return null;
+
+            using var hmac = new HMACSHA512(user.PasswordSalt);
+            var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dto.Password));
+
+            for (int i = 0; i < computedHash.Length; i++)
+            {
+                if (computedHash[i] != user.PasswordHash[i]) return null;
+            }
+
+            return GenerateToken(user);
+        }
+
+        private string GenerateToken(User user)
+        {
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName),
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddDays(7),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+}
 }
