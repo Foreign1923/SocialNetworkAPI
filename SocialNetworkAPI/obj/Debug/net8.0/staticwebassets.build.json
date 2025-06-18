@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "ArQiceAGU5v9N3GAF8ndAzqXG+JHgBDaommHL6EDVIs=",
+  "Source": "SocialNetworkAPI",
+  "BasePath": "_content/SocialNetworkAPI",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
